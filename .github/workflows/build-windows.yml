@@ -1,0 +1,79 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install flask==3.1.0
+          pip install faster-whisper==1.1.0
+          pip install imageio-ffmpeg
+          pip install requests
+          pip install yt-dlp
+
+      - name: Download ffmpeg
+        shell: pwsh
+        run: |
+          $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+          Invoke-WebRequest -Uri $url -OutFile "ffmpeg.zip"
+          Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg-temp" -Force
+          New-Item -ItemType Directory -Path "tools" -Force
+          $bin = Get-ChildItem -Path "ffmpeg-temp" -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          Copy-Item $bin.FullName "tools\ffmpeg.exe"
+          $probe = Get-ChildItem -Path "ffmpeg-temp" -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
+          Copy-Item $probe.FullName "tools\ffprobe.exe"
+
+      - name: Download yt-dlp
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "tools\yt-dlp.exe"
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller drama-reels.spec --clean --noconfirm
+
+      - name: Create LICENSE.txt
+        shell: pwsh
+        run: |
+          "Drama Reels Pipeline`nCopyright (c) 2026 Archanist`nMIT License" | Out-File -FilePath "LICENSE.txt" -Encoding UTF8
+
+      - name: Create icon
+        run: python scripts/make_icon.py
+
+      - name: Setup Inno Setup
+        uses: jeserwen/setup-innosetup@v1.0.0
+
+      - name: Build Installer
+        run: |
+          iscc installer.iss
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: DramaReels-Installer
+          path: installer-output/DramaReels-Setup-*.exe
+          retention-days: 30
+
+      - name: Upload Portable EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: DramaReels-Portable
+          path: dist/DramaReels.exe
+          retention-days: 30

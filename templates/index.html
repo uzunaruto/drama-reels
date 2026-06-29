@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Drama Reels — Full Pipeline</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a2e; --border: #2a2a3e;
+            --accent: #e63946; --accent2: #ff6b6b; --gold: #ffd700; --green: #2ecc71;
+            --blue: #3498db; --purple: #9b59b6; --text: #e8e8f0; --text2: #8888aa;
+            --radius: 12px;
+        }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, var(--surface), var(--surface2)); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .sub { color: var(--text2); font-size: 12px; }
+        .nav { display: flex; gap: 4px; flex-wrap: wrap; }
+        .nav button { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .nav button.active, .nav button:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+        .stat .v { font-size: 28px; font-weight: 800; color: var(--accent); }
+        .stat .l { color: var(--text2); font-size: 12px; margin-top: 2px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+        .card h2 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .row.tri { grid-template-columns: 1fr 1fr 1fr; }
+        .g { display: flex; flex-direction: column; gap: 4px; }
+        .g.full { grid-column: 1 / -1; }
+        .g label { font-size: 12px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .g input, .g select, .g textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; transition: border 0.2s; }
+        .g input:focus, .g select:focus, .g textarea:focus { border-color: var(--accent); }
+        .g .help { color: var(--text2); font-size: 11px; }
+        .btn { padding: 10px 22px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-p { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+        .btn-g { background: var(--green); color: #fff; }
+        .btn-b { background: var(--blue); color: #fff; }
+        .btn-s { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-w { background: var(--gold); color: #000; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-xs { padding: 3px 8px; font-size: 11px; }
+        .sec { display: none; }
+        .sec.active { display: block; }
+        .job { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; transition: border 0.2s; }
+        .job:hover { border-color: var(--accent); }
+        .job-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .job-t { font-weight: 600; font-size: 14px; }
+        .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .b-pending { background: #333; color: #999; }
+        .b-processing { background: #1a3a5c; color: #5dade2; }
+        .b-uploading { background: #3a2a1c; color: #f39c12; }
+        .b-completed { background: #1a3c2a; color: #2ecc71; }
+        .b-failed { background: #3c1a1a; color: #e74c3c; }
+        .b-queued { background: #2a1a3c; color: #9b59b6; }
+        .b-published { background: #1a3c2a; color: #2ecc71; }
+        .job-url { color: var(--text2); font-size: 12px; word-break: break-all; margin-bottom: 6px; }
+        .prog { background: var(--bg); border-radius: 6px; height: 6px; overflow: hidden; margin-bottom: 6px; }
+        .prog-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); border-radius: 6px; transition: width 0.5s; }
+        .job-m { display: flex; justify-content: space-between; align-items: center; }
+        .job-msg { color: var(--text2); font-size: 12px; }
+        .job-act { display: flex; gap: 6px; }
+        .clips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+        .clip { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .clip-v { width: 100%; aspect-ratio: 9/16; background: #000; cursor: pointer; position: relative; }
+        .clip-v video, .clip-v img { width: 100%; height: 100%; object-fit: cover; }
+        .clip-i { padding: 10px; }
+        .clip-n { font-weight: 600; font-size: 12px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .clip-m { color: var(--text2); font-size: 11px; margin-bottom: 6px; }
+        .clip-a { display: flex; gap: 4px; flex-wrap: wrap; }
+        .empty { text-align: center; padding: 40px; color: var(--text2); }
+        .empty .ic { font-size: 40px; margin-bottom: 10px; }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 20px; display: none; z-index: 1000; animation: slideIn 0.3s; }
+        .toast.show { display: block; }
+        .toast.ok { border-color: var(--green); }
+        .toast.err { border-color: var(--accent); }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .spinner { width: 16px; height: 16px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+        .modal-bg.show { display: flex; }
+        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal h3 { margin-bottom: 16px; }
+        .chk { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .chk input { width: 16px; height: 16px; }
+        .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--surface2); border-radius: 8px; margin-bottom: 8px; }
+        .queue-item .qi-info { flex: 1; }
+        .queue-item .qi-title { font-weight: 600; font-size: 13px; }
+        .queue-item .qi-meta { color: var(--text2); font-size: 11px; }
+        .queue-item .qi-act { display: flex; gap: 4px; }
+        .page-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface2); border-radius: 8px; margin-bottom: 8px; }
+        .page-card .pi { flex: 1; }
+        .page-card .pn { font-weight: 600; }
+        .page-card .pm { color: var(--text2); font-size: 12px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-day { background: var(--surface2); border-radius: 8px; padding: 8px; min-height: 80px; font-size: 12px; }
+        .cal-day .cd-num { font-weight: 700; margin-bottom: 4px; }
+        .cal-day .cd-items { font-size: 10px; color: var(--text2); }
+        .cal-day.today { border: 1px solid var(--accent); }
+        .tag { display: inline-block; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10px; margin: 1px; }
+        @media (max-width: 768px) { .row { grid-template-columns: 1fr; } .row.tri { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🎬 Drama Reels Pipeline</h1>
+            <div class="sub">Auto download • clip • translate • subtitle • watermark • schedule • upload</div>
+        </div>
+        <div class="nav" id="nav">
+            <button class="active" onclick="go('dash')">📊 Dashboard</button>
+            <button onclick="go('new')">➕ New Job</button>
+            <button onclick="go('clips')">🎞️ Clips</button>
+            <button onclick="go('queue')">📤 Queue</button>
+            <button onclick="go('pages')">📄 Pages</button>
+            <button onclick="go('calendar')">📅 Calendar</button>
+            <button onclick="go('settings')">⚙️ Settings</button>
+            <button onclick="go('help')">❓ Help</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- DASHBOARD -->
+        <div id="sec-dash" class="sec active">
+            <div class="stats">
+                <div class="stat"><div class="v" id="s-jobs">0</div><div class="l">Jobs</div></div>
+                <div class="stat"><div class="v" id="s-done">0</div><div class="l">Completed</div></div>
+                <div class="stat"><div class="v" id="s-clips">0</div><div class="l">Clips</div></div>
+                <div class="stat"><div class="v" id="s-up">0</div><div class="l">Uploaded</div></div>
+                <div class="stat"><div class="v" id="s-queue">0</div><div class="l">In Queue</div></div>
+                <div class="stat"><div class="v" id="s-pages">0</div><div class="l">FB Pages</div></div>
+            </div>
+            <h2 style="margin-bottom:12px">📋 Recent Jobs</h2>
+            <div id="jobs-list"><div class="empty"><div class="ic">🎬</div><p>Belum ada job</p></div></div>
+        </div>
+
+        <!-- NEW JOB -->
+        <div id="sec-new" class="sec">
+            <div class="card">
+                <h2>➕ Process Drama Video</h2>
+                <form id="job-form" onsubmit="createJob(event)">
+                    <div class="row">
+                        <div class="g full">
+                            <label>Video URL(s) — bisa bulk, pisahkan dengan koma</label>
+                            <textarea id="f-url" rows="3" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="g"><label>Judul</label><input id="f-title" placeholder="Drama China - ..."></div>
+                        <div class="g"><label>Clip Duration (detik)</label><input id="f-dur" type="number" value="45" min="15" max="120"></div>
+                    </div>
+                    <div class="row tri">
+                        <div class="g"><label>Bahasa Audio</label>
+                            <select id="f-lang">
+                                <option value="zh" selected>Chinese 中文</option>
+                                <option value="ko">Korean 한국어</option>
+                                <option value="ja">Japanese 日本語</option>
+                                <option value="id">Indonesian</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <div class="g"><label>Whisper Model</label>
+                            <select id="f-whisper">
+                                <option value="tiny">Tiny (cepat)</option>
+                                <option value="base" selected>Base (balanced)</option>
+                                <option value="small">Small (akurat)</option>
+                            </select>
+                        </div>
+                        <div class="g"><label>Facebook Page</label>
+                            <select id="f-page"><option value="">— Skip upload —</option></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="g"><label class="chk"><input type="checkbox" id="f-translate" checked> Auto-translate subtitle ke Indonesia</label></div>
+                        <div class="g"><label>Watermark Text (opsional)</label><input id="f-wm" placeholder="@YourPage"></div>
+                    </div>
+                    <button type="submit" class="btn btn-p" id="btn-create">🚀 Mulai Process</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CLIPS -->
+        <div id="sec-clips" class="sec">
+            <div class="card">
+                <h2>🎞️ Semua Clips</h2>
+                <div class="clips-grid" id="all-clips"><div class="empty"><div class="ic">🎞️</div><p>Belum ada clip</p></div></div>
+            </div>
+        </div>
+
+        <!-- QUEUE -->
+        <div id="sec-queue" class="sec">
+            <div class="card">
+                <h2>📤 Publish Queue</h2>
+                <div id="queue-list"><div class="empty"><div class="ic">📤</div><p>Queue kosong</p></div></div>
+            </div>
+        </div>
+
+        <!-- PAGES -->
+        <div id="sec-pages" class="sec">
+            <div class="card">
+                <h2>📄 Facebook Pages</h2>
+                <div id="pages-list"></div>
+                <div style="margin-top:16px">
+                    <h3 style="font-size:14px;margin-bottom:8px">+ Tambah Page</h3>
+                    <div class="row tri">
+                        <div class="g"><label>Page ID</label><input id="np-id" placeholder="123456789"></div>
+                        <div class="g"><label>Page Name</label><input id="np-name" placeholder="Drama China Sub Indo"></div>
+                        <div class="g"><label>Access Token</label><input id="np-token" type="password" placeholder="EAA..."></div>
+                    </div>
+                    <button class="btn btn-g btn-sm" onclick="addPage()">+ Tambah Page</button>
+                    <button class="btn btn-b btn-sm" onclick="openFBAuth()" style="margin-left:8px">🔑 OAuth Generate</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div id="sec-calendar" class="sec">
+            <div class="card">
+                <h2>📅 Content Calendar</h2>
+                <div style="display:flex;gap:8px;margin-bottom:16px">
+                    <button class="btn btn-s btn-sm" onclick="calNav(-1)">← Prev</button>
+                    <span id="cal-month" style="line-height:32px;font-weight:600"></span>
+                    <button class="btn btn-s btn-sm" onclick="calNav(1)">Next →</button>
+                </div>
+                <div class="cal-grid" id="cal-grid"></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="sec-settings" class="sec">
+            <div class="card">
+                <h2>⚙️ Facebook API</h2>
+                <div class="row">
+                    <div class="g"><label>App ID</label><input id="set-app" placeholder="123456"></div>
+                    <div class="g"><label>App Secret</label><input id="set-secret" type="password" placeholder="••••"></div>
+                </div>
+                <div class="row">
+                    <div class="g"><label>Default Page ID</label><input id="set-page" placeholder="123456"></div>
+                    <div class="g"><label>Access Token</label><input id="set-token" type="password" placeholder="EAA..."></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>🎬 Processing Defaults</h2>
+                <div class="row tri">
+                    <div class="g"><label>Clip Duration</label><input id="set-dur" type="number" value="45"></div>
+                    <div class="g"><label>Whisper Model</label>
+                        <select id="set-wmodel"><option value="tiny">Tiny</option><option value="base" selected>Base</option><option value="small">Small</option></select>
+                    </div>
+                    <div class="g"><label>Language</label>
+                        <select id="set-lang"><option value="zh">Chinese</option><option value="ko">Korean</option><option value="ja">Japanese</option></select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="g"><label class="chk"><input type="checkbox" id="set-autotrans" checked> Auto-translate subtitle</label></div>
+                    <div class="g"><label>Watermark</label><input id="set-wm" placeholder="@YourPage"></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>⏰ Scheduler</h2>
+                <div class="row">
+                    <div class="g"><label>Posts per Day</label><input id="set-ppd" type="number" value="3" min="1" max="10"></div>
+                    <div class="g"><label class="chk"><input type="checkbox" id="set-autosched" checked> Auto-schedule clips</label></div>
+                </div>
+            </div>
+            <button class="btn btn-p" onclick="saveSettings()">💾 Save All Settings</button>
+        </div>
+
+        <!-- HELP -->
+        <div id="sec-help" class="sec">
+            <div class="card">
+                <h2>❓ Cara Pakai</h2>
+                <ol style="line-height:2.2;padding-left:20px">
+                    <li><strong>New Job</strong> → paste URL drama China → klik Process</li>
+                    <li>Tunggu proses download + transcribe + translate + clip (5-15 menit)</li>
+                    <li>Auto-translate subtitle Chinese → Indonesian</li>
+                    <li>Clip otomatis masuk <strong>Queue</strong> untuk diupload</li>
+                    <li>Scheduler auto-post di jam optimal (11, 13, 18, 20, 21:30 WIB)</li>
+                    <li>Monitor di <strong>Calendar</strong> dan <strong>Dashboard</strong></li>
+                </ol>
+            </div>
+            <div class="card">
+                <h2>🔧 Fitur Lengkap</h2>
+                <ul style="line-height:2;padding-left:20px">
+                    <li>📥 <strong>Bulk download</strong> — proses banyak URL sekaligus</li>
+                    <li>🀄 <strong>Auto-translate</strong> — subtitle Chinese → Indonesia</li>
+                    <li>💧 <strong>Watermark</strong> — text overlay di semua clip</li>
+                    <li>🖼️ <strong>Auto-thumbnail</strong> — generate thumbnail per clip</li>
+                    <li>#️⃣ <strong>Auto-hashtag</strong> — hashtag & caption otomatis per genre</li>
+                    <li>📤 <strong>Publish queue</strong> — manage semua clip yang mau diupload</li>
+                    <li>⏰ <strong>Auto-scheduler</strong> — post di jam optimal</li>
+                    <li>📄 <strong>Multi-page</strong> — manage beberapa Facebook Page</li>
+                    <li>📅 <strong>Content calendar</strong> — visual jadwal posting</li>
+                    <li>📊 <strong>Analytics</strong> — track views, likes, engagement</li>
+                    <li>✏️ <strong>Edit clip</strong> — ubah title, caption, hashtag per clip</li>
+                    <li>🔗 <strong>Merge clips</strong> — gabung beberapa clip jadi satu</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h2>🔑 Setup Facebook</h2>
+                <ol style="line-height:2.2;padding-left:20px">
+                    <li>Buka <a href="https://developers.facebook.com" target="_blank" style="color:var(--accent)">developers.facebook.com</a> → Create App → Business</li>
+                    <li>Settings → Basic → Copy <code>App ID</code> & <code>App Secret</code></li>
+                    <li>App Review → Request: <code>pages_manage_posts</code>, <code>pages_manage_videos</code>, <code>pages_show_list</code></li>
+                    <li>Klik "OAuth Generate" di Pages tab → Login → Pilih Page</li>
+                    <li>Settings → Advanced → Connected Pages → tambahkan Page lo</li>
+                    <li>Page harus <strong>Professional</strong> (Business/Creator), bukan personal</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-bg" id="modal-edit">
+        <div class="modal">
+            <h3>✏️ Edit Clip</h3>
+            <div class="g" style="margin-bottom:12px"><label>Title</label><input id="ed-title"></div>
+            <div class="g" style="margin-bottom:12px"><label>Caption</label><textarea id="ed-caption" rows="3"></textarea></div>
+            <div class="g" style="margin-bottom:12px"><label>Description (full)</label><textarea id="ed-desc" rows="4"></textarea></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-p btn-sm" onclick="saveEdit()">💾 Save</button>
+                <button class="btn btn-s btn-sm" onclick="closeModal('modal-edit')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FB Auth Modal -->
+    <div class="modal-bg" id="modal-fb">
+        <div class="modal">
+            <h3>🔑 Facebook OAuth</h3>
+            <div class="g" style="margin-bottom:12px"><label>App ID</label><input id="fb-app" placeholder="Your App ID"></div>
+            <button class="btn btn-b btn-sm" onclick="genFBURL()">Generate Auth URL</button>
+            <div id="fb-result" style="margin-top:16px;display:none">
+                <div class="g" style="margin-bottom:12px"><label>1. Buka link ini:</label><input id="fb-url" readonly onclick="this.select()"></div>
+                <div class="g" style="margin-bottom:12px"><label>2. Paste redirect URL:</label><input id="fb-code" placeholder="http://localhost/?code=..."></div>
+                <div class="g" style="margin-bottom:12px"><label>App Secret</label><input id="fb-secret" type="password" placeholder="Your App Secret"></div>
+                <button class="btn btn-g btn-sm" onclick="exchangeFB()">Get Token</button>
+                <div id="fb-token-area" style="margin-top:12px;display:none">
+                    <div class="g"><label>Access Token:</label><textarea id="fb-token" rows="2" readonly onclick="this.select()" style="color:var(--green);border-color:var(--green)"></textarea></div>
+                </div>
+            </div>
+            <div style="margin-top:16px"><button class="btn btn-s btn-sm" onclick="closeModal('modal-fb')">Close</button></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    let cur='dash',editId=0,calMonth=new Date().getMonth(),calYear=new Date().getFullYear();
+    let poll=null;
+
+    function go(s){
+        document.querySelectorAll('.sec').forEach(e=>e.classList.remove('active'));
+        document.getElementById('sec-'+s).classList.add('active');
+        document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+        event.target.classList.add('active');
+        cur=s;
+        if(s==='dash')refresh();
+        if(s==='clips')loadClips();
+        if(s==='queue')loadQueue();
+        if(s==='pages')loadPages();
+        if(s==='calendar')renderCal();
+        if(s==='settings')loadSettings();
+        if(s==='new')loadPageOptions();
+    }
+
+    async function api(p,o={}){
+        const r=await fetch('/api'+p,{headers:{'Content-Type':'application/json'},...o,body:o.body?JSON.stringify(o.body):undefined});
+        return r.json();
+    }
+
+    // Dashboard
+    async function refresh(){
+        try{
+            const[s,j]=await Promise.all([api('/stats'),api('/jobs')]);
+            document.getElementById('s-jobs').textContent=s.total_jobs;
+            document.getElementById('s-done').textContent=s.completed_jobs;
+            document.getElementById('s-clips').textContent=s.total_clips;
+            document.getElementById('s-up').textContent=s.uploaded_clips;
+            document.getElementById('s-queue').textContent=s.queue_pending||0;
+            document.getElementById('s-pages').textContent=s.fb_pages||0;
+            renderJobs(j.jobs);
+        }catch(e){console.error(e)}
+    }
+
+    function renderJobs(jobs){
+        const c=document.getElementById('jobs-list');
+        if(!jobs||!jobs.length){c.innerHTML='<div class="empty"><div class="ic">🎬</div><p>Belum ada job</p></div>';return}
+        c.innerHTML=jobs.map(j=>`
+            <div class="job">
+                <div class="job-h"><div class="job-t">${j.title||'Untitled'} #${j.id}</div><span class="badge b-${j.status}">${j.status}</span></div>
+                <div class="job-url">${j.url}</div>
+                ${j.status==='processing'||j.status==='uploading'?`<div class="prog"><div class="prog-bar" style="width:${j.progress}%"></div></div>`:''}
+                <div class="job-m">
+                    <div class="job-msg">${j.message||''} ${j.clip_count>0?'• '+j.clip_count+' clips':''} ${j.language?'• '+j.language:''} ${j.auto_translate?'• 🔄translate':''}</div>
+                    <div class="job-act">
+                        ${j.status==='completed'?`<button class="btn btn-s btn-xs" onclick="viewJobClips(${j.id})">👁️ Clips</button>`:''}
+                        <button class="btn btn-s btn-xs" onclick="delJob(${j.id})" style="color:var(--accent)">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function viewJobClips(id){
+        const d=await api('/jobs/'+id);
+        go('clips');
+        setTimeout(()=>{
+            const c=document.getElementById('all-clips');
+            if(d.clips&&d.clips.length){
+                c.innerHTML=d.clips.map(cl=>clipCard(cl)).join('');
+            }
+        },100);
+    }
+
+    function clipCard(cl){
+        const tags=cl.hashtags?(typeof cl.hashtags==='string'?JSON.parse(cl.hashtags):cl.hashtags):[];
+        return`<div class="clip">
+            <div class="clip-v" onclick="this.querySelector('video')?.paused?this.querySelector('video')?.play():this.querySelector('video')?.pause()">
+                ${cl.thumbnail_path?`<img src="/api/clips/${cl.id}/thumbnail" loading="lazy">`:`<video src="/api/preview/${cl.job_id}?clip_id=${cl.id}" preload="metadata" muted playsinline></video>`}
+            </div>
+            <div class="clip-i">
+                <div class="clip-n">${cl.title||cl.filename}</div>
+                <div class="clip-m">${cl.duration?.toFixed(1)||'?'}s • ${cl.genre||'general'} • ${cl.fb_status||'pending'}</div>
+                ${tags.length?`<div style="margin-bottom:6px">${tags.slice(0,5).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
+                <div class="clip-a">
+                    <a href="/api/clips/${cl.id}/download" class="btn btn-s btn-xs">⬇️</a>
+                    <button class="btn btn-s btn-xs" onclick="editClip(${cl.id})">✏️</button>
+                    <button class="btn btn-s btn-xs" onclick="queueClip(${cl.id})">📤 Queue</button>
+                    ${cl.fb_status!=='uploaded'?`<button class="btn btn-g btn-xs" onclick="uploadClip(${cl.id})">🚀 Upload</button>`:`<span style="color:var(--green);font-size:11px">✅</span>`}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Create Job
+    async function createJob(e){
+        e.preventDefault();
+        const btn=document.getElementById('btn-create');
+        btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Processing...';
+        const body={
+            url:document.getElementById('f-url').value,
+            title:document.getElementById('f-title').value,
+            clip_duration:+document.getElementById('f-dur').value,
+            language:document.getElementById('f-lang').value,
+            whisper_model:document.getElementById('f-whisper').value,
+            fb_page_id:document.getElementById('f-page').value,
+            auto_translate:document.getElementById('f-translate').checked,
+            watermark_text:document.getElementById('f-wm').value
+        };
+        try{
+            const r=await api('/jobs',{method:'POST',body});
+            if(r.error)throw new Error(r.error);
+            toast(`✅ ${r.count||1} job(s) created!`,'ok');
+            document.getElementById('job-form').reset();
+            document.getElementById('f-dur').value='45';
+            go('dash');
+            document.querySelectorAll('.nav button')[0].classList.add('active');
+            startPoll();
+        }catch(e){toast('❌ '+e.message,'err')}
+        finally{btn.disabled=false;btn.innerHTML='🚀 Mulai Process'}
+    }
+
+    async function delJob(id){if(!confirm('Hapus job #'+id+'?'))return;await api('/jobs/'+id,{method:'DELETE'});toast('🗑️ Deleted','ok');refresh()}
+
+    // Clips
+    async function loadClips(){
+        const d=await api('/clips');
+        const c=document.getElementById('all-clips');
+        if(!d.clips||!d.clips.length){c.innerHTML='<div class="empty"><div class="ic">🎞️</div><p>Belum ada clip</p></div>';return}
+        c.innerHTML=d.clips.map(cl=>clipCard(cl)).join('');
+    }
+
+    async function editClip(id){
+        const cl=await api('/clips/'+id);
+        editId=id;
+        document.getElementById('ed-title').value=cl.title||'';
+        document.getElementById('ed-caption').value=cl.caption||'';
+        document.getElementById('ed-desc').value=cl.description||'';
+        document.getElementById('modal-edit').classList.add('show');
+    }
+    async function saveEdit(){
+        await api('/clips/'+editId,{method:'PATCH',body:{
+            title:document.getElementById('ed-title').value,
+            caption:document.getElementById('ed-caption').value,
+            description:document.getElementById('ed-desc').value
+        }});
+        closeModal('modal-edit');toast('✅ Saved','ok');loadClips();
+    }
+
+    async function queueClip(id){
+        const pages=await api('/pages');
+        const pid=pages.pages?.[0]?.page_id||'';
+        await api('/clips/'+id+'/queue',{method:'POST',body:{page_id:pid}});
+        toast('📤 Added to queue','ok');
+    }
+
+    async function uploadClip(id){
+        const pid=prompt('Facebook Page ID (kosongkan untuk default):');
+        toast('Uploading...','ok');
+        try{
+            const r=await api('/clips/'+id+'/upload',{method:'POST',body:{page_id:pid||''}});
+            if(r.error)throw new Error(r.error);
+            toast('✅ Uploaded!','ok');loadClips();
+        }catch(e){toast('❌ '+e.message,'err')}
+    }
+
+    // Queue
+    async function loadQueue(){
+        const d=await api('/queue');
+        const c=document.getElementById('queue-list');
+        if(!d.queue||!d.queue.length){c.innerHTML='<div class="empty"><div class="ic">📤</div><p>Queue kosong</p></div>';return}
+        c.innerHTML=d.queue.map(q=>`
+            <div class="queue-item">
+                <div class="qi-info">
+                    <div class="qi-title">${q.title||q.filename}</div>
+                    <div class="qi-meta">${q.page_id?'Page: '+q.page_id:''} ${q.scheduled_time?'• 📅 '+q.scheduled_time:''} • <span class="badge b-${q.status}">${q.status}</span></div>
+                </div>
+                <div class="qi-act">
+                    <button class="btn btn-g btn-xs" onclick="publishNow(${q.id})">🚀 Now</button>
+                    <button class="btn btn-s btn-xs" onclick="delQueue(${q.id})" style="color:var(--accent)">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function publishNow(id){
+        toast('Publishing...','ok');
+        try{
+            const r=await api('/queue/'+id+'/publish',{method:'POST'});
+            if(r.error)throw new Error(r.error);
+            toast('✅ Published!','ok');loadQueue();
+        }catch(e){toast('❌ '+e.message,'err')}
+    }
+    async function delQueue(id){await api('/queue/'+id,{method:'DELETE'});toast('🗑️ Removed','ok');loadQueue()}
+
+    // Pages
+    async function loadPages(){
+        const d=await api('/pages');
+        const c=document.getElementById('pages-list');
+        if(!d.pages||!d.pages.length){c.innerHTML='<div class="empty"><p>Belum ada page. Tambahkan di bawah.</p></div>';return}
+        c.innerHTML=d.pages.map(p=>`
+            <div class="page-card">
+                <div class="pi"><div class="pn">${p.page_name||p.page_id}</div><div class="pm">ID: ${p.page_id} • Posts today: ${p.posts_today||0}</div></div>
+                <button class="btn btn-s btn-xs" onclick="rmPage('${p.page_id}')" style="color:var(--accent)">🗑️</button>
+            </div>
+        `).join('');
+    }
+    async function addPage(){
+        await api('/pages',{method:'POST',body:{
+            page_id:document.getElementById('np-id').value,
+            page_name:document.getElementById('np-name').value,
+            access_token:document.getElementById('np-token').value
+        }});
+        toast('✅ Page added','ok');loadPages();
+    }
+    async function rmPage(id){await api('/pages/'+id,{method:'DELETE'});toast('🗑️ Removed','ok');loadPages()}
+
+    async function loadPageOptions(){
+        const d=await api('/pages');
+        const sel=document.getElementById('f-page');
+        sel.innerHTML='<option value="">— Skip upload —</option>';
+        (d.pages||[]).forEach(p=>{
+            sel.innerHTML+=`<option value="${p.page_id}">${p.page_name||p.page_id}</option>`;
+        });
+    }
+
+    // Calendar
+    function renderCal(){
+        const months=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        document.getElementById('cal-month').textContent=months[calMonth]+' '+calYear;
+        const grid=document.getElementById('cal-grid');
+        const first=new Date(calYear,calMonth,1);
+        const last=new Date(calYear,calMonth+1,0);
+        const startDay=first.getDay();
+        const today=new Date();
+        let html='';
+        for(let i=0;i<startDay;i++)html+='<div class="cal-day" style="opacity:0.3"></div>';
+        for(let d=1;d<=last.getDate();d++){
+            const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+            html+=`<div class="cal-day${isToday?' today':''}"><div class="cd-num">${d}</div><div class="cd-items" id="cal-${d}"></div></div>`;
+        }
+        grid.innerHTML=html;
+        loadCalendarEntries();
+    }
+    function calNav(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++}if(calMonth<0){calMonth=11;calYear--}renderCal()}
+
+    async function loadCalendarEntries(){
+        const start=`${calYear}-${String(calMonth+1).padStart(2,'0')}-01`;
+        const end=`${calYear}-${String(calMonth+1).padStart(2,'0')}-31`;
+        const d=await api(`/calendar?start=${start}&end=${end}`);
+        (d.entries||[]).forEach(e=>{
+            const day=parseInt(e.date.split('-')[2]);
+            const el=document.getElementById('cal-'+day);
+            if(el)el.innerHTML+=`<div style="font-size:10px;color:var(--accent)">${e.time_slot} ${e.title||'Post'}</div>`;
+        });
+    }
+
+    // Settings
+    async function loadSettings(){
+        const s=await api('/settings');
+        document.getElementById('set-app').value=s.fb_app_id||'';
+        document.getElementById('set-page').value=s.fb_page_id||'';
+        document.getElementById('set-dur').value=s.clip_duration||45;
+        document.getElementById('set-ppd').value=s.posts_per_day||3;
+        document.getElementById('set-autosched').checked=s.auto_schedule!=='false';
+        document.getElementById('set-autotrans').checked=s.auto_translate==='true';
+    }
+    async function saveSettings(){
+        await api('/settings',{method:'POST',body:{
+            fb_app_id:document.getElementById('set-app').value,
+            fb_app_secret:document.getElementById('set-secret').value,
+            fb_page_id:document.getElementById('set-page').value,
+            fb_access_token:document.getElementById('set-token').value,
+            clip_duration:document.getElementById('set-dur').value,
+            whisper_model:document.getElementById('set-wmodel').value,
+            language:document.getElementById('set-lang').value,
+            auto_translate:document.getElementById('set-autotrans').checked,
+            watermark_text:document.getElementById('set-wm').value,
+            posts_per_day:document.getElementById('set-ppd').value,
+            auto_schedule:document.getElementById('set-autosched').checked
+        }});
+        toast('✅ Settings saved!','ok');
+    }
+
+    // FB Auth
+    function openFBAuth(){document.getElementById('modal-fb').classList.add('show')}
+    async function genFBURL(){
+        const aid=document.getElementById('fb-app').value;
+        if(!aid){toast('❌ App ID required','err');return}
+        const d=await api('/fb/auth-url?app_id='+aid);
+        document.getElementById('fb-url').value=d.auth_url;
+        document.getElementById('fb-result').style.display='block';
+    }
+    async function exchangeFB(){
+        const code=document.getElementById('fb-code').value;
+        const secret=document.getElementById('fb-secret').value;
+        const aid=document.getElementById('fb-app').value;
+        if(!code||!secret){toast('❌ Code & Secret required','err');return}
+        try{
+            const r=await api('/fb/exchange',{method:'POST',body:{code,app_id:aid,app_secret:secret}});
+            if(r.error)throw new Error(r.error);
+            document.getElementById('fb-token').value=r.access_token;
+            document.getElementById('fb-token-area').style.display='block';
+            toast('✅ Token generated!','ok');
+        }catch(e){toast('❌ '+e.message,'err')}
+    }
+
+    // Utils
+    function closeModal(id){document.getElementById(id).classList.remove('show')}
+    function toast(m,t='ok'){const e=document.getElementById('toast');e.textContent=m;e.className='toast show '+t;setTimeout(()=>e.classList.remove('show'),4000)}
+    function startPoll(){if(poll)clearInterval(poll);poll=setInterval(()=>{if(cur==='dash')refresh()},3000)}
+
+    refresh();startPoll();
+    </script>
+</body>
+</html>
